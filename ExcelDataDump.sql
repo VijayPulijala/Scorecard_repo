@@ -1,3 +1,8 @@
+
+the purpose of this proc is to populate the data required for excel dump for an employee for a specific period of time. This 
+would dynamically change the number of columns in the final result set. 
+
+
 USE #####
 GO
 
@@ -41,7 +46,7 @@ DROP TABLE ##calc1
 select             
 @RequestorEmployeeID=employeeid,
 @RequestorRole =EmployeeRole
-From coe_dw.ncoe.dimEmployeeservice
+From ##Schema.###EmployeeTable
 where NTLoginID=@NTLogin and @stopdate Between Startdate and isnull(StopDate,@StopDate)
 
 
@@ -49,7 +54,7 @@ where NTLoginID=@NTLogin and @stopdate Between Startdate and isnull(StopDate,@St
 (
 Select Distinct epm.employeeserviceid, es.teamid
 from ####.Table#### epm (nolock) inner join 
-coe_dw.ncoe.dimEmployeeService es (nolock) on epm.employeeserviceid = es.employeeserviceid
+##Schema.###EmployeeTable es (nolock) on epm.employeeserviceid = es.employeeserviceid
 where es.employeeid = @Employeeid 
 and epm.fiscalperiodid = @Period
 and 1 = case when @RequestorRole = 'Agent' and es.EmployeeID = @RequestorEmployeeID then 1 else case when  @RequestorRole <> 'Agent' then 1 else 0 end END 
@@ -60,7 +65,7 @@ and 1 = case when @RequestorRole = 'Agent' and es.EmployeeID = @RequestorEmploye
 ,datadumpid as
 (
 Select Distinct de.ExcelDataDumpid , de.teamid from 
-####.dimTeamExcelDataDump de inner join emp on de.teamid = emp.teamid
+####.##ExcelTable de inner join emp on de.teamid = emp.teamid
 and @period between FiscalPeriodId_start and isnull(fiscalperiodid_Stop, @Period)
 )
 
@@ -74,7 +79,7 @@ dd.Measure, Query, d.teamid,FieldList, CreateTable
 --,concat('######_Temp_ExcelDataDumpTable_' ,dd.Measure) TableName
 ,TempTableName TableName
 ,whereclause , GroupByClause 
-from datadumpid d inner join ####.dimExcelDataDump dd on d.ExcelDataDumpid = dd.ExcelDataDumpid
+from datadumpid d inner join ####.##ExcelDetails dd on d.ExcelDataDumpid = dd.ExcelDataDumpid
 )
 
 Select * into #Details from details
@@ -263,26 +268,9 @@ END
 close cur
 deallocate cur
 
-                    ------------------------------Select * from @MeasureFieldList 
-
-
-                    ------------------------------Select @FiledList =STUFF((SELECT ','+(MeasureField)
-                    ------------------------------                        from @MeasureFieldList
-                    ------------------------------                    group by MeasureField,Sno ,Row_Num
-                    ------------------------------                    order by Sno, Row_Num
-                    ------------------------------            FOR XML PATH(''), TYPE
-                    ------------------------------            ).value('.', 'NVARCHAR(MAX)') 
-                    ------------------------------       ,1,1,'')
-
-                    ------------------------------            Select Fields = @FiledList 
-
-
 Set @createtable = concat('create table ######_Temp_ExcelDataDumpTable_Final (ExcelDataDumpTable_Finalid Int IDENTITY(1,1) NOT NULL,sno int,measure varchar(200),periodid int,employeeid varchar(50), ',@FiledList,')')
-                        ------------------Select @createtable 
-EXECUTE sp_ExecuteSQL @createtable 
-            -------------------------------------Select * from ######_Temp_ExcelDataDumpTable_Final
 
-                                ----------------------------------Select * from @MeasureFieldList
+EXECUTE sp_ExecuteSQL @createtable 
 
 Declare @SelectStatement_firsrow nvarchar(max), @SelectStatement_calc1 nvarchar(max), @FinalSelect_list Nvarchar(max), @FinalSelect Nvarchar(max)
 
@@ -296,8 +284,6 @@ BEGIN
     Set @SelectStatement_firsrow  = (Select Distinct  FirstRowList   from  @MeasureFieldList where sno = @Sno)
     Set @SelectStatement_calc1  = (Select Distinct  SelectStatement   from  @MeasureFieldList where sno = @Sno)
 
-                    ----------Select @SelectStatement_calc1 
-                    ----------Select @SelectStatement_firsrow
    EXECUTE sp_ExecuteSQL @SelectStatement_firsrow
    EXECUTE sp_ExecuteSQL @SelectStatement_calc1  
 
@@ -307,7 +293,6 @@ END
 close cur
 deallocate cur
 
-----------------Select * from ######_Temp_ExcelDataDumpTable_Final
 
 /******************* Part 3 **********************/
 
